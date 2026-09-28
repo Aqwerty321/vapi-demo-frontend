@@ -129,11 +129,11 @@ function App() {
         />
       </div>
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Voice Lab home">
+        <a className="brand" href="#" aria-label="BitLab home">
           <span className="brand-icon">
             <AudioLines size={23} />
           </span>
-          <span>voice lab</span>
+          <span>BitLab</span>
         </a>
         <div className="topbar-right">
           <span className="workspace-tag">
