@@ -4,6 +4,8 @@ A responsive glass interface with a React Bits WebGL orb, real-time transcripts,
 
 ## Start
 
+The interface opens in Italian by default. The header’s IT / EN switch changes interface text and transcript speaker labels without interrupting an active call. Transcript content is preserved verbatim. The assistant’s spoken language is configured separately in the provider dashboard; this frontend translation does not change it.
+
 ```sh
 npm install
 npm run dev

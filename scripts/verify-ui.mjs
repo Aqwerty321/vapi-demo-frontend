@@ -27,7 +27,19 @@ try {
   const { page, context } = await newPage({ width: 1440, height: 1050 });
   await page.goto(origin);
   await page.evaluate(() => document.fonts.ready);
-  await expect(page).toHaveTitle('Voice Lab');
+  await expect(page).toHaveTitle('BitLab — Sessione vocale');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'it');
+  await expect(page.getByRole('heading', { name: 'Sessione vocale', exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/italian-desktop.png', fullPage: true });
+  await page.getByRole('tab', { name: 'Guida rapida' }).click();
+  await expect(page.getByRole('heading', { name: 'Per iniziare' })).toBeVisible();
+  await page.getByRole('button', { name: 'Impostazioni di connessione', exact: true }).click();
+  await expect(page.getByLabel('Chiave pubblica', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Chiudi le impostazioni' }).click();
+  await page.getByRole('button', { name: 'English', exact: true }).click();
+  await expect(page).toHaveTitle('BitLab — Voice session');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await page.getByRole('tab', { name: 'Live transcript' }).click();
   await expect(page.locator('body')).not.toContainText(/vapi/i);
   await expect(
     page.getByRole("heading", { name: "Voice session", exact: true }),
@@ -60,6 +72,9 @@ try {
   );
   await page.getByRole("button", { name: "Start conversation" }).click();
   await expect(page.getByRole("alert")).toBeVisible({ timeout: 10000 });
+  await page.getByRole('button', { name: 'Italiano', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Connessione non riuscita');
+  await page.getByRole('button', { name: 'English', exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Start conversation" }),
   ).toBeEnabled();
@@ -69,7 +84,7 @@ try {
   await mobile.page.goto(origin);
   await mobile.page.evaluate(() => document.fonts.ready);
   await expect(
-    mobile.page.getByRole("button", { name: "Start conversation" }),
+    mobile.page.getByRole("button", { name: "Avvia conversazione" }),
   ).toBeVisible();
   const overflow = await mobile.page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth,
@@ -80,7 +95,7 @@ try {
     fullPage: true,
   });
   await mobile.page
-    .getByRole("button", { name: "Configure assistant", exact: true })
+    .getByRole("button", { name: "Configura l’assistente", exact: true })
     .click();
   await expect(mobile.page.locator("dialog")).toBeVisible();
   await mobile.page.keyboard.press("Escape");
@@ -118,6 +133,7 @@ try {
     }),
   );
   await live.page.goto(origin);
+  await live.page.getByRole('button', { name: 'English', exact: true }).click();
   await live.page
     .getByRole("button", { name: "Open connection settings" })
     .click();
@@ -133,6 +149,15 @@ try {
     live.page.getByRole("button", { name: "End conversation" }),
   ).toBeVisible();
   await expect(live.page.locator(".message")).toHaveCount(1);
+  await live.page.getByRole('button', { name: 'Italiano', exact: true }).click();
+  await expect(live.page.getByRole('button', { name: 'Termina conversazione' })).toBeVisible();
+  await expect(live.page.locator('.message-heading')).toContainText('Assistente');
+  await live.page.getByRole('button', { name: 'Disattiva il microfono', exact: true }).click();
+  expect(await live.page.evaluate(() => window.__testMuted)).toBe(true);
+  await live.page.getByRole('button', { name: 'Riattiva il microfono', exact: true }).click();
+  await live.page.getByRole('button', { name: 'Metti in pausa lo scorrimento automatico' }).click();
+  await live.page.getByRole('button', { name: 'Riprendi lo scorrimento automatico' }).click();
+  await live.page.getByRole('button', { name: 'English', exact: true }).click();
   await expect(live.page.locator(".message p")).toHaveText(
     "Hello! What would you like to explore today?",
   );

@@ -15,7 +15,7 @@ export function isRecoverableAudioError(error) {
 }
 
 export function callEndedMessage(reason) {
-  if (reason === 'silence-timed-out') return 'The call reached its silence timeout. Start a new session to continue.';
-  if (reason === 'exceeded-max-duration') return 'The call reached the assistant’s time limit. Start a new session to continue.';
+  if (reason === 'silence-timed-out') return 'silenceTimeout';
+  if (reason === 'exceeded-max-duration') return 'durationTimeout';
   return '';
 }

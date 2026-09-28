@@ -29,6 +29,7 @@ import "@fontsource/space-grotesk/latin-600.css";
 import Orb from "./components/Orb";
 import Aurora from "./components/Aurora";
 import { useVoice } from "./useVoice";
+import { translations } from "./i18n";
 import "./styles.css";
 
 const initialSettings = {
@@ -41,6 +42,8 @@ const timeLabel = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 function App() {
+  const [language, setLanguage] = useState("it");
+  const t = translations[language];
   const [settings, setSettings] = useState(initialSettings);
   const [draft, setDraft] = useState(initialSettings);
   const [tab, setTab] = useState("transcript");
@@ -49,7 +52,7 @@ function App() {
   const pausedScrollTop = useRef(0);
   const dialog = useRef(null);
   const transcript = useRef(null);
-  const voice = useVoice();
+  const voice = useVoice(t);
   const busy = ["connecting", "live", "stopping"].includes(voice.phase);
   const live = voice.phase === "live";
   const connecting = voice.phase === "connecting";
@@ -57,23 +60,28 @@ function App() {
     settings.publicKey.trim() && settings.assistantId.trim(),
   );
   const stateLabel = connecting
-    ? "Establishing connection"
+    ? t.connecting
     : voice.phase === "stopping"
-      ? "Ending session"
+      ? t.stopping
       : live
         ? voice.speaking
-          ? "Assistant is speaking"
+          ? t.speaking
           : voice.muted
-            ? "Microphone muted"
-            : "Listening to you"
+            ? t.microphoneMuted
+            : t.listening
         : voice.phase === "error"
-          ? "Connection interrupted"
-          : "Ready";
+          ? t.interrupted
+          : t.ready;
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = t.pageTitle;
+    document.querySelector('meta[name="description"]')?.setAttribute("content", t.description);
+  }, [language, t]);
   useLayoutEffect(() => {
     const frame = transcript.current;
     if (!frame) return;
     frame.scrollTop = autoScroll ? frame.scrollHeight : pausedScrollTop.current;
-  }, [voice.messages, tab, autoScroll]);
+  }, [voice.messages, tab, autoScroll, language]);
   function handleTranscriptScroll(event) {
     const frame = event.currentTarget;
     pausedScrollTop.current = frame.scrollTop;
@@ -106,7 +114,7 @@ function App() {
   }
   function download() {
     const text = voice.messages
-      .map((m) => `${m.role === "assistant" ? "Assistant" : "You"}: ${m.text}`)
+      .map((m) => `${m.role === "assistant" ? t.assistant : t.you}: ${m.text}`)
       .join("\n\n");
     const url = URL.createObjectURL(
       new Blob([text], { type: "text/plain;charset=utf-8" }),
@@ -116,7 +124,7 @@ function App() {
     a.download = "voice-lab-conversation.txt";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setNotice("Transcript downloaded");
+    setNotice("downloaded");
   }
   return (
     <div className="app-shell">
@@ -129,33 +137,37 @@ function App() {
         />
       </div>
       <header className="topbar">
-        <a className="brand" href="#" aria-label="BitLab home">
+        <a className="brand" href="#" aria-label={t.home}>
           <span className="brand-icon">
             <AudioLines size={23} />
           </span>
           <span>BitLab</span>
         </a>
         <div className="topbar-right">
+          <div className="language-switch" role="group" aria-label={t.language}>
+            <button type="button" lang="it" aria-label="Italiano" aria-pressed={language === "it"} onClick={() => setLanguage("it")}>IT</button>
+            <button type="button" lang="en" aria-label="English" aria-pressed={language === "en"} onClick={() => setLanguage("en")}>EN</button>
+          </div>
           <span className="workspace-tag">
-            <span className="dot" /> Personal workspace
+            <span className="dot" /> {t.workspace}
           </span>
           <button
             className="icon-button"
             onClick={openSettings}
             disabled={busy}
-            aria-label="Open connection settings"
-            title="Connection settings"
+            aria-label={t.openSettings}
+            title={t.settings}
           >
             <Settings2 size={18} />
           </button>
-          <div className="avatar" aria-label="Personal workspace">
+          <div className="avatar" aria-label={t.workspace}>
             V
           </div>
         </div>
       </header>
       <main>
         <section className="page-heading">
-          <h1>Voice session</h1>
+          <h1>{t.voiceSession}</h1>
           <button
             className="text-link docs-link"
             onClick={() => {
@@ -163,18 +175,18 @@ function App() {
               document.getElementById("guide-tab")?.focus();
             }}
           >
-            Quick guide <ArrowUpRight size={15} />
+            {t.guide} <ArrowUpRight size={15} />
           </button>
         </section>
-        <section className="console-grid" aria-label="Voice workspace">
+        <section className="console-grid" aria-label={t.voiceWorkspace}>
           <div className={`voice-panel glass ${live ? "is-live" : ""}`}>
             <div className="panel-top">
               <span className="section-label">
-                <Radio size={14} /> SESSION
+                <Radio size={14} /> {t.session}
               </span>
               <span className={`state-pill ${live ? "live" : ""}`}>
                 <span className="dot" />
-                {live ? "LIVE SESSION" : connecting ? "CONNECTING" : "STANDBY"}
+                {live ? t.liveSession : connecting ? t.connectingBadge : t.standby}
               </span>
             </div>
             <div className="orb-stage">
@@ -200,10 +212,10 @@ function App() {
                 disabled={!live}
                 onClick={voice.toggleMute}
                 aria-label={
-                  voice.muted ? "Unmute microphone" : "Mute microphone"
+                  voice.muted ? t.unmute : t.mute
                 }
                 aria-pressed={voice.muted}
-                title={voice.muted ? "Unmute microphone" : "Mute microphone"}
+                title={voice.muted ? t.unmute : t.mute}
               >
                 {voice.muted ? <MicOff size={19} /> : <Mic size={19} />}
               </button>
@@ -221,12 +233,12 @@ function App() {
                 )}
                 <span>
                   {connecting
-                    ? "Cancel connection"
+                    ? t.cancel
                     : live
-                      ? "End conversation"
+                      ? t.end
                       : voice.phase === "stopping"
-                        ? "Ending session…"
-                        : "Start conversation"}
+                        ? t.ending
+                        : t.start}
                 </span>
                 {!busy && <ArrowUpRight size={17} />}
               </button>
@@ -234,8 +246,8 @@ function App() {
                 className="round-control"
                 onClick={openSettings}
                 disabled={busy}
-                aria-label="Configure assistant"
-                title="Configure assistant"
+                aria-label={t.configure}
+                title={t.configure}
               >
                 <Settings2 size={19} />
               </button>
@@ -258,7 +270,7 @@ function App() {
                   <Clock3 size={16} />
                 </span>
                 <div>
-                  <span className="micro-label">SESSION TIME</span>
+                  <span className="micro-label">{t.duration}</span>
                   <strong>{timeLabel(voice.seconds)}</strong>
                 </div>
               </div>
@@ -267,13 +279,13 @@ function App() {
                   <Waves size={17} />
                 </span>
                 <div>
-                  <span className="micro-label">AUDIO INPUT</span>
+                  <span className="micro-label">{t.audioInput}</span>
                   <strong>
                     {live
                       ? voice.muted
-                        ? "Muted"
-                        : "Microphone on"
-                      : "Not connected"}
+                        ? t.muted
+                        : t.microphoneOn
+                      : t.disconnected}
                   </strong>
                 </div>
               </div>
@@ -294,14 +306,14 @@ function App() {
           <aside className="conversation-panel glass">
             <div className="conversation-heading">
               <span className="section-label">
-                <MessageSquare size={15} /> TRANSCRIPT
+                <MessageSquare size={15} /> {t.transcript}
               </span>
               <button
                 className="icon-button"
                 onClick={download}
                 disabled={!voice.messages.length}
-                aria-label="Download transcript"
-                title="Download transcript"
+                aria-label={t.download}
+                title={t.download}
               >
                 <ArrowDownToLine size={16} />
               </button>
@@ -309,7 +321,7 @@ function App() {
             <div
               className="tabs"
               role="tablist"
-              aria-label="Conversation panel"
+              aria-label={t.conversationPanel}
             >
               <button
                 role="tab"
@@ -318,7 +330,7 @@ function App() {
                 aria-selected={tab === "transcript"}
                 onClick={() => setTab("transcript")}
               >
-                Live transcript {live && <span className="dot" />}
+                {t.liveTranscript} {live && <span className="dot" />}
               </button>
               <button
                 role="tab"
@@ -327,7 +339,7 @@ function App() {
                 aria-selected={tab === "guide"}
                 onClick={() => setTab("guide")}
               >
-                Quick guide <ArrowUpRight size={12} />
+                {t.guide} <ArrowUpRight size={12} />
               </button>
             </div>
             {tab === "transcript" ? (
@@ -351,14 +363,14 @@ function App() {
                             {m.role === "assistant" ? (
                               <AudioLines size={12} />
                             ) : (
-                              "Y"
+                              t.userInitial
                             )}
                           </span>
                           <span>
-                            {m.role === "assistant" ? "Assistant" : "You"}
+                            {m.role === "assistant" ? t.assistant : t.you}
                           </span>
                           {m.partial && (
-                            <span className="partial-indicator">speaking</span>
+                            <span className="partial-indicator">{t.speakingShort}</span>
                           )}
                         </div>
                         <p>{m.text}</p>
@@ -368,7 +380,7 @@ function App() {
                 ) : (
                   <div className="empty-transcript">
                     <MessageSquare size={23} strokeWidth={1} aria-hidden="true" />
-                    <p>No transcript yet.</p>
+                    <p>{t.empty}</p>
                   </div>
                 )}
               </div>
@@ -380,24 +392,8 @@ function App() {
                 aria-labelledby="guide-tab"
                 tabIndex={0}
               >
-                <h3>Getting started</h3>
-                {[
-                  [
-                    "01",
-                    "Connect",
-                    "Add your public key and assistant ID in connection settings.",
-                  ],
-                  [
-                    "02",
-                    "Start",
-                    "Press start and allow microphone access when your browser asks.",
-                  ],
-                  [
-                    "03",
-                    "Review",
-                    "Scroll up or pause auto-scroll to read earlier messages. Resume to jump to the latest.",
-                  ],
-                ].map(([n, title, copy]) => (
+                <h3>{t.gettingStarted}</h3>
+                {t.steps.map(([n, title, copy]) => (
                   <div className="guide-step" key={n}>
                     <span>{n}</span>
                     <div>
@@ -411,23 +407,23 @@ function App() {
                   disabled={busy}
                   onClick={openSettings}
                 >
-                  Connection settings <ChevronRight size={15} />
+                  {t.settings} <ChevronRight size={15} />
                 </button>
               </div>
             )}
             <div className="transcript-footer">
               <span className={`dot ${live ? "mint" : ""}`} />
-              <span>{live ? "Live" : "Idle"}</span>
+              <span>{live ? t.live : t.idle}</span>
               <button
                 className="scroll-toggle"
                 onClick={toggleAutoScroll}
                 disabled={tab !== "transcript"}
-                aria-label={autoScroll ? "Pause auto-scroll" : "Resume auto-scroll"}
+                aria-label={autoScroll ? t.pauseScrollLabel : t.resumeScrollLabel}
                 aria-pressed={!autoScroll}
-                title={autoScroll ? "Pause scrolling; transcript continues updating" : "Resume and jump to latest"}
+                title={autoScroll ? t.pauseScrollHint : t.resumeScrollHint}
               >
                 {autoScroll ? <Pause size={12} /> : <Play size={12} />}
-                {autoScroll ? "Pause scroll" : "Resume scroll"}
+                {autoScroll ? t.pauseScroll : t.resumeScroll}
               </button>
             </div>
           </aside>
@@ -436,7 +432,7 @@ function App() {
       <dialog
         ref={dialog}
         className="settings-dialog"
-        aria-label="Connection settings"
+        aria-label={t.settings}
         onClick={(e) => {
           if (e.target === dialog.current) dialog.current.close();
         }}
@@ -449,24 +445,24 @@ function App() {
               assistantId: draft.assistantId.trim(),
             });
             dialog.current.close();
-            setNotice("Connection settings saved");
+            setNotice("saved");
           }}
         >
           <div className="dialog-heading">
             <span className="section-label">
-              <Settings2 size={15} /> CONNECTION SETTINGS
+              <Settings2 size={15} /> {t.settings.toLocaleUpperCase(language)}
             </span>
             <button
               type="button"
               className="icon-button"
               onClick={() => dialog.current.close()}
-              aria-label="Close settings"
+              aria-label={t.closeSettings}
             >
               <X size={20} />
             </button>
           </div>
-          <h2>Connection</h2>
-          <label htmlFor="public-key">Public key</label>
+          <h2>{t.connection}</h2>
+          <label htmlFor="public-key">{t.publicKey}</label>
           <input
             id="public-key"
             type="password"
@@ -474,11 +470,11 @@ function App() {
             required
             value={draft.publicKey}
             onChange={(e) => setDraft({ ...draft, publicKey: e.target.value })}
-            placeholder="Enter your public key"
+            placeholder={t.publicKeyPlaceholder}
             disabled={busy}
           />
-          <small>Use a public key. Private keys belong on a server.</small>
-          <label htmlFor="assistant-id">Assistant ID</label>
+          <small>{t.keyHint}</small>
+          <label htmlFor="assistant-id">{t.assistantId}</label>
           <input
             id="assistant-id"
             autoComplete="off"
@@ -487,25 +483,25 @@ function App() {
             onChange={(e) =>
               setDraft({ ...draft, assistantId: e.target.value })
             }
-            placeholder="Enter your assistant ID"
+            placeholder={t.assistantIdPlaceholder}
             disabled={busy}
           />
           <small>
-            Find these in your provider dashboard. Settings stay in this tab.
+            {t.settingsHint}
           </small>
           <button
             type="submit"
             className="call-button save-button"
             disabled={busy}
           >
-            <Check size={17} /> Save connection
+            <Check size={17} /> {t.save}
           </button>
         </form>
       </dialog>
       {notice && (
         <div className="toast" role="status">
           <Check size={16} />
-          {notice}
+          {t[notice]}
         </div>
       )}
     </div>

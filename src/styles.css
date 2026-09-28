@@ -148,6 +148,28 @@ p {
   gap: 9px;
   align-items: center;
 }
+.language-switch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #ffffff04;
+}
+.language-switch button {
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: transparent;
+  color: #a7a5b7;
+  font: 500 11px "Inter", sans-serif;
+  cursor: pointer;
+}
+.language-switch button[aria-pressed="true"] {
+  background: #b8a0ff22;
+  color: #eee8ff;
+}
+.language-switch button:hover { color: #fff; }
+.language-switch button:focus-visible { outline: 2px solid #b8a0ff; outline-offset: 2px; }
 .dot {
   display: inline-block;
   flex-shrink: 0;

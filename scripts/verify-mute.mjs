@@ -55,6 +55,7 @@ await context.route('**/*@vapi-ai_web*', async route => {
 
 try {
   await page.goto(origin);
+  await page.getByRole('button', { name: 'English', exact: true }).click();
   if (!live) {
     await page.getByRole('button', {name:'Open connection settings'}).click();
     await page.getByLabel('Public key', {exact:true}).fill('test-public');

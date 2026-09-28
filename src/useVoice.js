@@ -4,13 +4,14 @@ import { mergeTranscript } from "./transcript";
 import { WEB_CALL_OVERRIDES, isRecoverableAudioError, callEndedMessage } from "./callPolicy";
 const Vapi = VapiModule.default || VapiModule;
 function errorText(error) {
+  if (error?.messageKey) return error.messageKey;
   const detail =
     error?.error?.message || error?.errorMsg || error?.message || error?.error;
   return typeof detail === "string"
-    ? detail.replace(/\bvapi\b/gi, "voice service")
-    : "Could not connect. Check microphone permission and your connection settings.";
+    ? { detail: detail.replace(/\bvapi\b/gi, "voice service") }
+    : "connectionFailed";
 }
-export function useVoice() {
+export function useVoice(t) {
   const client = useRef(null),
     timeout = useRef(null),
     attempt = useRef(0),
@@ -50,7 +51,7 @@ export function useVoice() {
     try {
       await previous?.stop();
     } catch {
-      setError("The connection was interrupted while ending the session.");
+      setError("stopFailed");
     }
     locked.current = false;
     setPhase("idle");
@@ -126,7 +127,7 @@ export function useVoice() {
         if (desiredMuted.current && !vapi.isMuted()) {
           restoringMute = true;
           try { vapi.setMuted(true); }
-          catch { setError("Could not keep the microphone muted. End the call if needed."); }
+          catch { setError("keepMutedFailed"); }
           finally { restoringMute = false; }
         }
       });
@@ -154,7 +155,7 @@ export function useVoice() {
       vapi.on("error", (reason) => {
         if (!current()) return;
         if (isRecoverableAudioError(reason)) {
-          setWarning("Audio enhancement is unavailable. The call can continue.");
+          setWarning("audioWarning");
           return;
         }
         void fail(reason);
@@ -162,8 +163,7 @@ export function useVoice() {
       timeout.current = setTimeout(
         () =>
           fail({
-            message:
-              "Connection timed out. Check microphone permission, your network, and the public key’s allowed origins in your provider dashboard.",
+            messageKey: "connectionTimeout",
           }),
         30000,
       );
@@ -174,8 +174,7 @@ export function useVoice() {
       }
       if (!call)
         await fail({
-          message:
-            "Could not create this call. Check your public key and assistant ID.",
+          messageKey: "createCallFailed",
         });
     } catch (reason) {
       await fail(reason);
@@ -198,15 +197,15 @@ export function useVoice() {
       if (attempt.current === id && client.current === activeClient) {
         desiredMuted.current = previousMuted;
         setMuted(previousMuted);
-        setError("Could not change the microphone state. Please try again.");
+        setError("muteFailed");
       }
     }
   }
   return {
     phase,
     messages,
-    error,
-    warning,
+    error: error ? (typeof error === "string" ? t[error] : `${t.connectionFailed} (${error.detail})`) : "",
+    warning: warning ? t[warning] : "",
     muted,
     speaking,
     volume,
