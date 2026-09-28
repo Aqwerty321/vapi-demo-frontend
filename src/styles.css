@@ -113,9 +113,9 @@ p {
   align-items: center;
   gap: 11px;
   font:
-    600 27px "Space Grotesk",
+    600 27px "Inter",
     sans-serif;
-  letter-spacing: -1px;
+  letter-spacing: -0.6px;
 }
 .brand-icon {
   width: 34px;
