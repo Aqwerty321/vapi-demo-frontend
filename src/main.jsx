@@ -246,6 +246,12 @@ function App() {
                 <span>{voice.error}</span>
               </div>
             )}
+            {voice.warning && !voice.error && (
+              <div className="error-message audio-warning" role="status">
+                <CircleHelp size={16} />
+                <span>{voice.warning}</span>
+              </div>
+            )}
             <div className="session-strip">
               <div>
                 <span className="strip-icon">

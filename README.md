@@ -13,6 +13,8 @@ Configure `VITE_VAPI_PUBLIC_KEY` and `VITE_VAPI_ASSISTANT_ID` in `.env` using `.
 
 Allow microphone permission when starting a conversation. The Vapi SDK handles audio transport. If the public key restricts origins, allow the exact local origin displayed by Vite.
 
+The microphone button mutes your input, not the assistant's playback. Browser calls use a 3,600-second silence allowance so muted pauses do not trigger the short default silence timeout. The assistant's maximum call duration and other end-call rules still apply. Muted calls remain connected and can continue accruing usage. Recoverable audio-enhancement errors show a notice instead of disconnecting the call.
+
 ## Verify
 
 ```sh
@@ -21,6 +23,8 @@ npx playwright install chromium
 ```
 
 With the dev server running on `http://127.0.0.1:5173`, run `npm run test:ui`. This checks desktop/mobile rendering, settings, error handling, and simulated call controls. It blocks external network traffic, does not make live calls, and writes screenshots to `test-results/`.
+
+Run `npm run test:mute` for the local mute regression, including a simulated 90-second pause, audio recovery, mute preservation, failures, and end reasons. To explicitly make a real test call with the configured assistant, run `node scripts/verify-mute.mjs --live`. It uses a synthetic microphone, checks 75 seconds of muting and repeated unmute cycles, and ends the call automatically. The live check incurs normal call usage; it does not test your physical microphone.
 
 ## Visuals
 

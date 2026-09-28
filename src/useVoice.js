@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import VapiModule from "@vapi-ai/web";
 import { mergeTranscript } from "./transcript";
+import { WEB_CALL_OVERRIDES, isRecoverableAudioError, callEndedMessage } from "./callPolicy";
 const Vapi = VapiModule.default || VapiModule;
 function errorText(error) {
   const detail =
@@ -13,10 +14,12 @@ export function useVoice() {
   const client = useRef(null),
     timeout = useRef(null),
     attempt = useRef(0),
-    locked = useRef(false);
+    locked = useRef(false),
+    desiredMuted = useRef(false);
   const [phase, setPhase] = useState("idle");
   const [messages, setMessages] = useState([]);
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [muted, setMuted] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [volume, setVolume] = useState(0);
@@ -53,7 +56,9 @@ export function useVoice() {
     setPhase("idle");
     setSpeaking(false);
     setVolume(0);
+    desiredMuted.current = false;
     setMuted(false);
+    setWarning("");
   }
   async function start(settings) {
     if (locked.current) return;
@@ -61,9 +66,11 @@ export function useVoice() {
     const id = ++attempt.current;
     const current = () => id === attempt.current;
     setError("");
+    setWarning("");
     setPhase("connecting");
     setMessages([]);
     setSeconds(0);
+    desiredMuted.current = false;
     setMuted(false);
     let vapi;
     const fail = async (reason) => {
@@ -72,6 +79,9 @@ export function useVoice() {
       clearTimeout(timeout.current);
       setError(errorText(reason));
       setPhase("stopping");
+      setWarning("");
+      desiredMuted.current = false;
+      setMuted(false);
       setVolume(0);
       setSpeaking(false);
       try {
@@ -91,7 +101,7 @@ export function useVoice() {
         clearTimeout(timeout.current);
         setPhase("live");
       });
-      vapi.on("call-end", () => {
+      const finish = (reason) => {
         if (!current()) return;
         attempt.current++;
         clearTimeout(timeout.current);
@@ -100,7 +110,25 @@ export function useVoice() {
         setPhase("idle");
         setSpeaking(false);
         setVolume(0);
+        desiredMuted.current = false;
         setMuted(false);
+        setWarning("");
+        setError(callEndedMessage(reason));
+        // Status 'ended' may precede the transport's call-end event.
+        vapi.stop().catch(() => {});
+      };
+      vapi.on("call-end", () => finish());
+      let restoringMute = false;
+      vapi.on("daily-participant-updated", (participant) => {
+        if (!current() || !participant?.local || restoringMute) return;
+        // The SDK's noise-processor recovery can enable local audio. Preserve
+        // an explicit user mute even when that recovery replaces the track.
+        if (desiredMuted.current && !vapi.isMuted()) {
+          restoringMute = true;
+          try { vapi.setMuted(true); }
+          catch { setError("Could not keep the microphone muted. End the call if needed."); }
+          finally { restoringMute = false; }
+        }
       });
       vapi.on("speech-start", () => {
         if (current()) setSpeaking(true);
@@ -112,13 +140,25 @@ export function useVoice() {
         if (current()) setVolume(Math.max(0, Math.min(1, Number(value) || 0)));
       });
       vapi.on("message", (message) => {
+        if (!current()) return;
+        if (message.type === "status-update" && message.status === "ended") {
+          finish(message.endedReason);
+          return;
+        }
         if (!current() || message.type !== "transcript" || !message.transcript)
           return;
         const receivedAt = Date.now();
         setMessages(previous => mergeTranscript(previous, message, receivedAt));
       });
       vapi.on("call-start-failed", fail);
-      vapi.on("error", fail);
+      vapi.on("error", (reason) => {
+        if (!current()) return;
+        if (isRecoverableAudioError(reason)) {
+          setWarning("Audio enhancement is unavailable. The call can continue.");
+          return;
+        }
+        void fail(reason);
+      });
       timeout.current = setTimeout(
         () =>
           fail({
@@ -127,7 +167,7 @@ export function useVoice() {
           }),
         30000,
       );
-      const call = await vapi.start(settings.assistantId.trim());
+      const call = await vapi.start(settings.assistantId.trim(), WEB_CALL_OVERRIDES);
       if (!current()) {
         await vapi.stop();
         return;
@@ -143,17 +183,30 @@ export function useVoice() {
   }
   function toggleMute() {
     if (phase !== "live" || !client.current) return;
+    const activeClient = client.current;
+    const id = attempt.current;
+    const previousMuted = desiredMuted.current;
+    const nextMuted = !previousMuted;
+    desiredMuted.current = nextMuted;
     try {
-      client.current.setMuted(!muted);
-      setMuted(!muted);
+      activeClient.setMuted(nextMuted);
+      if (attempt.current === id && client.current === activeClient) {
+        setMuted(nextMuted);
+        setError("");
+      }
     } catch {
-      setError("Could not change the microphone state. Please try again.");
+      if (attempt.current === id && client.current === activeClient) {
+        desiredMuted.current = previousMuted;
+        setMuted(previousMuted);
+        setError("Could not change the microphone state. Please try again.");
+      }
     }
   }
   return {
     phase,
     messages,
     error,
+    warning,
     muted,
     speaking,
     volume,

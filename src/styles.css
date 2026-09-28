@@ -600,6 +600,11 @@ h1 span {
 .error-message svg {
   margin-top: 2px;
 }
+.audio-warning {
+  color: #cebedf;
+  background: #9270bc0d;
+  border-color: #9270bc30;
+}
 .conversation-panel {
   display: flex;
   flex-direction: column;

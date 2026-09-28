@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:ui": "node scripts/verify-ui.mjs",
+    "test:mute": "node scripts/verify-mute.mjs",
     "test": "node --test scripts/transcript.test.mjs"
   },
   "dependencies": {
